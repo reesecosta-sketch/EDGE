@@ -43,6 +43,7 @@ function EdgeMeter({ model, fair }: { model: number; fair: number | null }) {
 }
 
 function Confidence({ level }: { level?: EvBet["confidence"] }) {
+  if (!level) return null;
   const n = level === "High" ? 3 : level === "Medium" ? 2 : level === "Low" ? 1 : 0;
   return (
     <span className="inline-flex items-center gap-2" title={`Confidence: ${level ?? "—"}`}>
@@ -232,7 +233,7 @@ export default function Dashboard() {
                       <div className="max-w-[260px] text-[12px] leading-snug" style={{ color: "var(--muted)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }} title={b.rationale ?? ""}>
                         {b.rationale ?? "—"}
                       </div>
-                      <div className="mt-1"><Confidence level={b.confidence} /></div>
+                      {b.confidence && <div className="mt-1"><Confidence level={b.confidence} /></div>}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button

@@ -8,10 +8,11 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 const DEFAULT_URL = "https://ytswtgtojovuohmyoqfw.supabase.co";
 const DEFAULT_PUBLISHABLE_KEY = "sb_publishable_ljXgiR7RYTYn9l-kXSVXKw_WF7Zu7oe";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? DEFAULT_URL;
+// `||` (not `??`) so a present-but-empty env var falls through to the default.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_URL;
 const publicKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   DEFAULT_PUBLISHABLE_KEY;
 
 export const supabaseConfigured = Boolean(url && publicKey);

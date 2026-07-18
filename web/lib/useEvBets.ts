@@ -54,9 +54,11 @@ export function useEvBets(filters: Filters) {
     queryFn: async (): Promise<EvBet[]> => {
       if (!supabaseConfigured || !supabase) return sampleFor(filters);
       try {
+        // Embed the related event's name via the ev_bets.event_id FK, so the
+        // board can show "The Open Championship" without a separate query.
         let q = supabase
           .from("ev_bets")
-          .select("*")
+          .select("*, event:events(name)")
           .eq("status", "open")
           .gte("ev", filters.minEv)
           .order("ev", { ascending: false })
@@ -65,7 +67,9 @@ export function useEvBets(filters: Filters) {
         if (filters.market) q = q.eq("market", filters.market);
         const { data, error } = await q;
         if (error) throw error;
-        return (data as EvBet[]) ?? [];
+        return ((data ?? []) as Array<EvBet & { event?: { name?: string } }>).map(
+          ({ event, ...b }) => ({ ...b, event_name: b.event_name ?? event?.name })
+        );
       } catch (e) {
         // DB unreachable / schema not created yet: show sample so the board is
         // never a broken error page. Seed the DB (supabase/seed.sql) for live rows.
