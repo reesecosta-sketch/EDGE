@@ -1,13 +1,11 @@
 """
-Postgres writer (Supabase). Uses DATABASE_URL + the service role connection, which
-bypasses RLS — this code is the ONLY writer of the public model tables. Never ship
-these credentials to the client.
-
-Guarded: if psycopg or DATABASE_URL is missing, callers can still run --dry-run,
-which never touches the DB.
+Postgres writer (Supabase). Uses DATABASE_URL (service-role connection, bypasses
+RLS) — the ONLY writer of the public model tables. Never ship these credentials
+to the client. Guarded: if psycopg or DATABASE_URL is missing, --dry-run still runs.
 """
 from __future__ import annotations
 
+import json
 from typing import Any, Iterable
 
 from .config import CONFIG
@@ -18,7 +16,8 @@ class Db:
         self.dsn = dsn or CONFIG.database_url
         if not self.dsn:
             raise RuntimeError(
-                "DATABASE_URL not set. Fill .env, or use --dry-run to skip the DB."
+                "DATABASE_URL not set. Fill .env (Supabase → Settings → Database → "
+                "Connection string), or use --dry-run to skip the DB."
             )
         import psycopg  # imported lazily so --dry-run needs no driver
         self._psycopg = psycopg
@@ -26,8 +25,36 @@ class Db:
     def _conn(self):
         return self._psycopg.connect(self.dsn, autocommit=True)
 
+    def ensure_sport(self, sport_id: str, name: str) -> None:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "insert into sports (id, name) values (%s, %s) on conflict do nothing",
+                (sport_id, name),
+            )
+
+    def upsert_event(self, sport_id: str, external_id: str, name: str,
+                     start_time: str | None) -> str:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                """insert into events (sport_id, external_id, name, start_time, status)
+                   values (%s, %s, %s, coalesce(%s::timestamptz, now()), 'scheduled')
+                   on conflict (sport_id, external_id)
+                   do update set name = excluded.name, start_time = excluded.start_time
+                   returning id""",
+                (sport_id, external_id, name, start_time),
+            )
+            return str(cur.fetchone()[0])
+
+    def clear_open(self, sport_id: str) -> int:
+        """Remove the previous open board for a sport before writing a fresh one."""
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "delete from ev_bets where sport_id = %s and status = 'open'",
+                (sport_id,),
+            )
+            return cur.rowcount
+
     def upsert_model_run(self, sport_id: str, version: str, metrics: dict) -> str:
-        import json
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 "insert into model_runs (sport_id, model_version, metrics) "
@@ -37,13 +64,14 @@ class Db:
             return str(cur.fetchone()[0])
 
     def insert_ev_bets(self, rows: Iterable[dict[str, Any]]) -> int:
-        """rows: dicts matching ev_bets columns (see supabase/migrations)."""
+        """rows: dicts matching ev_bets columns. prediction_id may be None
+        (line-shopping bets have no model prediction; 0003 makes it nullable)."""
         rows = list(rows)
         if not rows:
             return 0
         cols = ["sport_id", "event_id", "market", "selection", "book", "price",
                 "model_prob", "novig_prob", "ev", "kelly_frac", "rationale",
-                "prediction_id"]
+                "prediction_id", "status"]
         placeholders = ", ".join(["%s"] * len(cols))
         with self._conn() as c, c.cursor() as cur:
             cur.executemany(

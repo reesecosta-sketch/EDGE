@@ -21,10 +21,13 @@ export function profitPerUnit(price: number): number {
 
 export const SPORT_META: Record<string, { label: string; icon: string }> = {
   golf: { label: "Golf", icon: "⛳" },
+  mlb: { label: "MLB", icon: "⚾" },
   nfl: { label: "NFL", icon: "🏈" },
   ncaab: { label: "NCAA Basketball", icon: "🏀" },
   ncaaf: { label: "NCAA Football", icon: "🏈" },
   soccer: { label: "Soccer", icon: "⚽" },
+  soccer_epl: { label: "Premier League", icon: "⚽" },
+  tennis: { label: "Tennis", icon: "🎾" },
   nascar: { label: "NASCAR", icon: "🏁" },
 };
 
@@ -34,6 +37,7 @@ export const MARKET_LABEL: Record<string, string> = {
   top_10: "Top 10",
   top_20: "Top 20",
   moneyline: "Moneyline",
+  h2h: "Moneyline",
   spread: "Spread",
   outright: "Outright",
 };
