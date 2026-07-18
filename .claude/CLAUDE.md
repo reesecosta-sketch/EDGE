@@ -36,7 +36,8 @@
 - **Core math** (`worker/core/devig.py`, `clv.py`, `rationale.py`) — de-vig (multiplicative/power/Shin), EV, fractional Kelly, CLV, rationale generator. **10/10 tests green.**
 - **Worker orchestrator** (`worker/run.py`) — `--dry-run` produces a correct ranked +EV table.
 - **DB schema** (`supabase/migrations/0001_init.sql`) — shared layer + RLS.
-- **Dashboard** (`web/`) — Next.js ranked/filterable table + per-bet rationale. `npm run build` passes.
+- **Frontend MVP "EDGE"** (`web/`) — polished dark Next.js dashboard: ranked +EV board, edge meters (model vs fair), EV pills, filters (sport/market/min-EV), SHAP rationale, confidence, and localStorage bet **tracking** with a slide-over. Runs standalone on sample data; loads live data when `NEXT_PUBLIC_SUPABASE_*` set. Netlify-ready (`web/netlify.toml`). `npm run build` green.
+- **Committed** — initial commit on `main` (61 files). Not yet pushed (needs your GitHub remote).
 - **Planning docs** — full set in `research/`: viability, tech-stack, PRD, skills, agents, **roadmap** (6 milestones, M1 = golf CLV gate).
 - **Sprint Zero (M0) started** — `git init` on `main`; `.github/workflows/ci.yml` (pytest + dry-run + web build); `.gitignore` verified (no secrets tracked). **Not yet done (needs your creds):** GitHub remote + branch protection, dev Supabase project + `db push`, Vercel link, key rotation, filling `.env`.
 - **Agents instantiated** — all 11 from `research/agents.md` now exist as `.claude/agents/*.md`. (May require a Claude Code restart to be invocable by name, since `.claude/agents/` was created mid-session.)

@@ -12,7 +12,14 @@
       "Bash(git init *)",
       "Bash(git symbolic-ref *)",
       "Bash(git config *)",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "WebFetch(domain:edgesportsbetting.netlify.app)",
+      "Bash(git rm *)",
+      "Bash(git add *)"
     ]
   }
 }
