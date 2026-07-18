@@ -39,30 +39,39 @@ const SAMPLE: EvBet[] = [
   S({ id: "f1", sport_id: "nfl", event_name: "Preseason: KC vs DET", market: "spread", selection: "Lions +3.5", book: "fanduel", price: -105, model_prob: 0.56, novig_prob: 0.512, ev: 0.092, confidence: "Low", rationale: "56% to cover vs. 51% fair — a +4.8pt edge; starters' snap projection favors Detroit early." }),
 ];
 
+function sampleFor(filters: Filters): EvBet[] {
+  return SAMPLE.filter(
+    (b) =>
+      b.ev >= filters.minEv &&
+      (!filters.sport || b.sport_id === filters.sport) &&
+      (!filters.market || b.market === filters.market)
+  ).sort((a, b) => b.ev - a.ev);
+}
+
 export function useEvBets(filters: Filters) {
   return useQuery({
     queryKey: ["ev_bets", filters],
     queryFn: async (): Promise<EvBet[]> => {
-      if (!supabaseConfigured || !supabase) {
-        return SAMPLE.filter(
-          (b) =>
-            b.ev >= filters.minEv &&
-            (!filters.sport || b.sport_id === filters.sport) &&
-            (!filters.market || b.market === filters.market)
-        ).sort((a, b) => b.ev - a.ev);
+      if (!supabaseConfigured || !supabase) return sampleFor(filters);
+      try {
+        let q = supabase
+          .from("ev_bets")
+          .select("*")
+          .eq("status", "open")
+          .gte("ev", filters.minEv)
+          .order("ev", { ascending: false })
+          .limit(200);
+        if (filters.sport) q = q.eq("sport_id", filters.sport);
+        if (filters.market) q = q.eq("market", filters.market);
+        const { data, error } = await q;
+        if (error) throw error;
+        return (data as EvBet[]) ?? [];
+      } catch (e) {
+        // DB unreachable / schema not created yet: show sample so the board is
+        // never a broken error page. Seed the DB (supabase/seed.sql) for live rows.
+        console.warn("[EDGE] Supabase fetch failed; showing sample data.", e);
+        return sampleFor(filters);
       }
-      let q = supabase
-        .from("ev_bets")
-        .select("*")
-        .eq("status", "open")
-        .gte("ev", filters.minEv)
-        .order("ev", { ascending: false })
-        .limit(200);
-      if (filters.sport) q = q.eq("sport_id", filters.sport);
-      if (filters.market) q = q.eq("market", filters.market);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data as EvBet[];
     },
     refetchInterval: 60_000, // +EV lines move; refresh each minute
   });
