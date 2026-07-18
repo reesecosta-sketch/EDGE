@@ -6,7 +6,8 @@ import { useTrackedBets } from "@/lib/useTrackedBets";
 import { supabaseConfigured } from "@/lib/supabase";
 import type { EvBet } from "@/lib/types";
 import {
-  fmtOdds, fmtPct, fmtEv, fmtKelly, profitPerUnit, sportMeta, marketLabel,
+  fmtOdds, fmtPct, fmtEv, fmtKelly, profitPerUnit, decimalFromAmerican,
+  sportMeta, marketLabel,
 } from "@/lib/format";
 
 /* ---------------- small presentational pieces ---------------- */
@@ -67,11 +68,128 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
+function StakeCalc({ price, kelly }: { price: number; kelly: number | null }) {
+  const [stake, setStake] = useState(1);
+  const profit = stake * profitPerUnit(price);
+  const ret = stake * decimalFromAmerican(price);
+  return (
+    <div className="glass glass-2 p-4">
+      <div className="text-[11px] uppercase tracking-wider mb-2" style={{ color: "var(--faint)" }}>
+        Stake calculator
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <label className="text-[13px]" style={{ color: "var(--muted)" }}>Stake</label>
+        <input
+          type="number" min={0} step={0.5} value={stake}
+          onChange={(e) => setStake(Math.max(0, Number(e.target.value) || 0))}
+          className="btn tnum" style={{ width: 88, textAlign: "right" }} aria-label="Stake in units"
+        />
+        <span className="text-[13px]" style={{ color: "var(--muted)" }}>units</span>
+        {kelly != null && kelly > 0 && (
+          <button
+            type="button" className="chip" style={{ cursor: "pointer" }}
+            onClick={() => setStake(Number((kelly * 100).toFixed(1)))}
+            title="Fill the model-suggested fraction of a 100u bankroll"
+          >
+            use Kelly {fmtKelly(kelly)}
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="glass p-3 text-center">
+          <div className="text-[11px]" style={{ color: "var(--faint)" }}>To win</div>
+          <div className="text-xl font-bold tnum" style={{ color: "var(--pos)" }}>+{profit.toFixed(2)}u</div>
+        </div>
+        <div className="glass p-3 text-center">
+          <div className="text-[11px]" style={{ color: "var(--faint)" }}>Total return</div>
+          <div className="text-xl font-bold tnum">{ret.toFixed(2)}u</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BetDetail({ bet, onClose, isTracked, onToggle }: {
+  bet: EvBet; onClose: () => void; isTracked: boolean; onToggle: () => void;
+}) {
+  const edgePts = bet.novig_prob != null ? (bet.model_prob - bet.novig_prob) * 100 : null;
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Details for ${bet.selection}`}>
+      <div className="absolute inset-0" style={{ background: "rgba(2,4,10,0.6)", backdropFilter: "blur(2px)" }} onClick={onClose} />
+      <aside className="sheet absolute right-0 top-0 h-full w-full sm:w-[460px] glass flex flex-col" style={{ borderRadius: 0, borderLeft: "1px solid var(--border-2)" }}>
+        <div className="flex items-start justify-between p-5" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="chip" style={{ padding: "1px 8px" }}>{sportMeta(bet.sport_id).icon} {sportMeta(bet.sport_id).label}</span>
+              <span className="chip">{marketLabel(bet.market)}</span>
+            </div>
+            <div className="text-xl font-bold">{bet.selection}</div>
+            {bet.event_name && <div className="text-[12.5px]" style={{ color: "var(--muted)" }}>{bet.event_name}</div>}
+          </div>
+          <button className="btn" onClick={onClose} aria-label="Close details">✕</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="glass glass-2 p-3 text-center">
+              <div className="text-[11px]" style={{ color: "var(--faint)" }}>Odds</div>
+              <div className="text-lg font-bold tnum">{fmtOdds(bet.price)}</div>
+              <div className="text-[11px] capitalize" style={{ color: "var(--muted)" }}>{bet.book}</div>
+            </div>
+            <div className="glass glass-2 p-3 text-center">
+              <div className="text-[11px]" style={{ color: "var(--faint)" }}>EV</div>
+              <div className="text-lg font-bold tnum" style={{ color: "var(--pos)" }}>{fmtEv(bet.ev)}</div>
+            </div>
+            <div className="glass glass-2 p-3 text-center">
+              <div className="text-[11px]" style={{ color: "var(--faint)" }}>Edge</div>
+              <div className="text-lg font-bold tnum" style={{ color: "var(--pos)" }}>{edgePts != null ? `+${edgePts.toFixed(1)}pt` : "—"}</div>
+            </div>
+          </div>
+
+          <div className="glass glass-2 p-4">
+            <div className="text-[11px] uppercase tracking-wider mb-2" style={{ color: "var(--faint)" }}>Model vs market</div>
+            <div className="flex items-center justify-between text-[13px] mb-1.5">
+              <span style={{ color: "var(--pos)" }}>Our model {fmtPct(bet.model_prob)}</span>
+              <span style={{ color: "var(--muted)" }}>Fair {fmtPct(bet.novig_prob)}</span>
+            </div>
+            <div className="meter" style={{ height: 8 }}>
+              <i style={{ width: `${Math.min(100, bet.model_prob * 100)}%` }} />
+              {bet.novig_prob != null && <u style={{ left: `${Math.min(100, bet.novig_prob * 100)}%`, height: 12, top: -2 }} />}
+            </div>
+            <p className="mt-2 text-[12px]" style={{ color: "var(--muted)" }}>
+              We estimate a higher true probability than the de-vigged market price implies — that gap is your edge.
+            </p>
+          </div>
+
+          {bet.rationale && (
+            <div className="glass glass-2 p-4">
+              <div className="text-[11px] uppercase tracking-wider mb-1.5" style={{ color: "var(--faint)" }}>Why this bet</div>
+              <p className="text-[13px] leading-relaxed">{bet.rationale}</p>
+            </div>
+          )}
+
+          <StakeCalc price={bet.price} kelly={bet.kelly_frac} />
+        </div>
+
+        <div className="p-4" style={{ borderTop: "1px solid var(--border)" }}>
+          <button className={isTracked ? "btn w-full" : "btn btn-primary w-full"} onClick={onToggle}>
+            {isTracked ? "★ Tracked — tap to remove" : "☆ Track this bet"}
+          </button>
+          <p className="mt-2 text-center text-[11px]" style={{ color: "var(--faint)" }}>
+            EDGE never places bets — you place it yourself at your book.
+          </p>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 /* ---------------- main dashboard ---------------- */
 
 export default function Dashboard() {
   const [filters, setFilters] = useState<Filters>({ sport: null, market: null, minEv: 0.05 });
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [detail, setDetail] = useState<EvBet | null>(null);
   const { data = [], isLoading, error } = useEvBets(filters);
   const tb = useTrackedBets();
 
@@ -210,10 +328,21 @@ export default function Dashboard() {
                 {data.map((b, i) => (
                   <tr
                     key={b.id}
-                    className="row-in"
-                    style={{ borderTop: "1px solid var(--border)", animationDelay: `${Math.min(i, 12) * 22}ms` }}
+                    className="row-in cursor-pointer transition-colors hover:bg-white/[0.04]"
+                    onClick={() => setDetail(b)}
+                    style={{
+                      borderTop: "1px solid var(--border)",
+                      animationDelay: `${Math.min(i, 12) * 22}ms`,
+                      background: i === 0 ? "linear-gradient(90deg, rgba(52,211,153,0.07), transparent 42%)" : undefined,
+                    }}
                   >
-                    <td className="py-3 px-4 tnum font-bold" style={{ color: "var(--faint)" }}>{i + 1}</td>
+                    <td
+                      className="py-3 px-4 tnum font-bold"
+                      style={{ color: i === 0 ? "var(--pos)" : "var(--faint)" }}
+                      title={i === 0 ? "Top play — biggest edge on the board" : undefined}
+                    >
+                      {i === 0 ? "🔥" : i + 1}
+                    </td>
                     <td className="py-3 px-4">
                       <div className="font-semibold">{b.selection}</div>
                       <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px]" style={{ color: "var(--muted)" }}>
@@ -239,7 +368,7 @@ export default function Dashboard() {
                       <button
                         className="track-btn"
                         data-on={tb.isTracked(b.id)}
-                        onClick={() => tb.toggle(b)}
+                        onClick={(e) => { e.stopPropagation(); tb.toggle(b); }}
                         aria-pressed={tb.isTracked(b.id)}
                         aria-label={tb.isTracked(b.id) ? `Untrack ${b.selection}` : `Track ${b.selection}`}
                       >
@@ -269,6 +398,16 @@ export default function Dashboard() {
         </p>
         <p className="mt-1">If gambling stops being fun, get help — call 1-800-GAMBLER. 21+.</p>
       </footer>
+
+      {/* ---- bet detail drawer ---- */}
+      {detail && (
+        <BetDetail
+          bet={detail}
+          onClose={() => setDetail(null)}
+          isTracked={tb.isTracked(detail.id)}
+          onToggle={() => tb.toggle(detail)}
+        />
+      )}
 
       {/* ---- tracked slide-over ---- */}
       {sheetOpen && (
