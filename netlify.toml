@@ -1,0 +1,21 @@
+# Netlify config at the REPO ROOT — this is the file Netlify reads first.
+# The Next.js app lives in web/, so `base = "web"` is the load-bearing line:
+# it makes Netlify cd into web/, detect Next.js, run the build, and deploy the
+# generated site. Without it, Netlify built from the repo root, found no
+# framework, ran no build, and served a 404 (raw source, no build output).
+#
+# Paths below are relative to `base` (web/). The @netlify/plugin-nextjs runtime
+# also sets the publish dir itself, so this stays correct even if Next changes it.
+
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Live data (optional): set in Netlify → Site settings → Environment variables.
+# Only PUBLIC values — never the service-role key or any odds/stats API key.
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
