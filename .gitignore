@@ -1,0 +1,29 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Python
+worker/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+*.parquet
+
+# Node / Next
+web/node_modules/
+web/.next/
+web/out/
+.pnpm-store/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

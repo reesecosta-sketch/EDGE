@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(python -m worker.run --sport golf --dry-run)",
+      "Bash(python -m pytest -q)",
+      "Bash(python -m pip install -q pytest)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(ls \"C:/Users/reese/.claude/projects/C--Users-reese-OneDrive-Desktop-Sports-Prof-Lee/memory/\" 2>/dev/null && echo \"---\" && cat \"C:/Users/reese/.claude/projects/C--Users-reese-OneDrive-Desktop-Sports-Prof-Lee/memory/MEMORY.md\" 2>/dev/null || echo \"no MEMORY.md yet\")",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(git init *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(git config *)",
+      "Bash(git status *)"
+    ]
+  }
+}

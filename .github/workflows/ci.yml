@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Sprint Zero gate (roadmap M0): every PR must pass worker tests + dry-run and a
+# web production build before merge. Add the RLS isolation suite here in M2, and
+# make core-math / isolation failures block merge (branch protection, set on GitHub).
+
+jobs:
+  worker:
+    name: worker — pytest + dry-run
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: worker/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Core math tests (must stay green)
+        run: python -m pytest -q
+      - name: Worker dry-run (no keys, no DB, no credits)
+        run: python -m worker.run --sport golf --dry-run
+
+  web:
+    name: web — typecheck + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Production build (typecheck + lint + prerender)
+        run: npm run build
+
+  # Placeholder for M2 — enable once 0002_multitenancy + RLS tests land.
+  # rls-isolation:
+  #   name: security — cross-org RLS isolation
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with: { python-version: "3.10" }
+  #     - run: pip install -r worker/requirements.txt
+  #     - env:
+  #         SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
+  #         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
+  #       run: python -m pytest worker/tests/test_rls_isolation.py -q

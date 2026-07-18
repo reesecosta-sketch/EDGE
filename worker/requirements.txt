@@ -1,0 +1,19 @@
+# Core math + orchestration (no ML/DB needed for --dry-run)
+python-dotenv>=1.0
+
+# Modeling (per-sport models)
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+xgboost>=2.0
+lightgbm>=4.3
+shap>=0.45
+
+# Odds ingestion
+httpx>=0.27
+
+# Database (Supabase Postgres, service-role writer)
+psycopg[binary]>=3.1
+
+# Dev
+pytest>=8.0
