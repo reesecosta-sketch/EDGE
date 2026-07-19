@@ -1,0 +1,31 @@
+name: Daily live odds
+
+# Runs once a day, pulls live odds for MLB/Golf/NASCAR/Soccer/NFL, computes +EV
+# vs. the no-vig market consensus, and writes the board to Supabase.
+#
+# Requires two repo secrets (Settings -> Secrets and variables -> Actions):
+#   ODDS_API_KEY   your free key from the-odds-api.com
+#   DATABASE_URL   postgresql://postgres:PASSWORD@db.<ref>.supabase.co:5432/postgres
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # 13:00 UTC daily (~9am ET). Adjust as you like.
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install -r requirements-live.txt
+      - name: Fetch odds and write +EV board
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m worker.live --all --write --regions us

@@ -28,7 +28,8 @@
       "Bash(python -m worker.live --sport mlb --regions us,us2,eu)",
       "Bash(MIN_EV=0.0 python -m worker.live --sport mlb --regions us,us2,eu)",
       "Bash(MIN_EV=0.01 python -m worker.live --sport mlb --regions us,us2,eu --write)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(python -m worker.live --all --write --regions us)"
     ]
   }
 }

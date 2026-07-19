@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useEvBets, ALL_SAMPLE, type Filters } from "@/lib/useEvBets";
+import { useEvBets, type Filters } from "@/lib/useEvBets";
 import { useTrackedBets } from "@/lib/useTrackedBets";
 import { supabaseConfigured } from "@/lib/supabase";
 import type { EvBet } from "@/lib/types";
@@ -193,10 +193,8 @@ export default function Dashboard() {
   const { data = [], isLoading, error } = useEvBets(filters);
   const tb = useTrackedBets();
 
-  const sports = useMemo(
-    () => Array.from(new Set(ALL_SAMPLE.map((b) => b.sport_id))),
-    []
-  );
+  // Fixed order — baseball first, then golf, nascar, soccer, nfl.
+  const sports = ["mlb", "golf", "nascar", "soccer", "nfl"];
   const markets = useMemo(() => Array.from(new Set(data.map((b) => b.market))), [data]);
 
   const stats = useMemo(() => {

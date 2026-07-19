@@ -14,39 +14,41 @@ from statistics import mean
 from .devig import expected_value, kelly_fraction, remove_vig
 
 
-def compute_event_bets(event: dict, min_ev: float, kelly_frac: float = 0.25) -> list[dict]:
+def compute_event_bets(event: dict, min_ev: float, kelly_frac: float = 0.25,
+                       max_outcomes: int = 200) -> list[dict]:
     """
     event = {
       "market": "moneyline",
       "books": [ {"book": "draftkings", "prices": {"Team A": -150, "Team B": 130}}, ... ]
     }
-    Returns +EV bets sorted by EV. Handles 2-outcome markets only.
+    Handles ANY number of outcomes: 2-way (moneyline), 3-way (soccer 1X2), and
+    N-way outrights (golf/NASCAR winner). Returns +EV bets sorted by EV.
     """
     books = event.get("books", [])
 
-    # Per-book no-vig line (only well-formed 2-way books).
+    # De-vig each book over ITS OWN listed outcomes (books may list different
+    # subsets for outrights, so we don't require identical selection sets).
     book_fair: dict[str, dict[str, float]] = {}
-    selections: list[str] | None = None
+    all_sels: set[str] = set()
     for b in books:
         prices = b.get("prices", {})
-        if len(prices) != 2:
+        if not (2 <= len(prices) <= max_outcomes):
             continue
         names = list(prices.keys())
-        if selections is None:
-            selections = names
-        if set(names) != set(selections):
-            continue  # inconsistent labeling across books; skip
-        fair = remove_vig([prices[names[0]], prices[names[1]]])
-        book_fair[b["book"]] = {names[0]: fair[0], names[1]: fair[1]}
+        fair = remove_vig([prices[n] for n in names])
+        book_fair[b["book"]] = dict(zip(names, fair))
+        all_sels.update(names)
 
-    if selections is None or len(book_fair) < 2:
+    if len(book_fair) < 2:
         return []  # need at least two books for a meaningful consensus
 
-    # Consensus fair prob = mean of book no-vig probs, renormalized to sum to 1.
+    # Consensus fair prob per selection = mean across books that list it (require
+    # >=2 books so a lone outlier can't define its own "fair"). Renormalize to 1.
     consensus: dict[str, float] = {}
-    for s in selections:
+    for s in all_sels:
         vals = [bf[s] for bf in book_fair.values() if s in bf]
-        consensus[s] = mean(vals) if vals else 0.0
+        if len(vals) >= 2:
+            consensus[s] = mean(vals)
     total = sum(consensus.values())
     if total <= 0:
         return []

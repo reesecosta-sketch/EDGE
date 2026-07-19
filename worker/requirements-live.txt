@@ -1,0 +1,5 @@
+# Minimal deps for the live +EV worker (no ML stack needed for line-shopping).
+# Used by the daily GitHub Actions job for a fast, reliable install.
+python-dotenv>=1.0
+httpx>=0.27
+psycopg[binary]>=3.1
