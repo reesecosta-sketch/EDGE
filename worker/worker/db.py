@@ -8,38 +8,53 @@ from __future__ import annotations
 import json
 import re
 from typing import Any, Iterable
-from urllib.parse import quote
 
 from .config import CONFIG
 
 
-def _normalize_dsn(dsn: str) -> str:
-    """Percent-encode the password in a postgres URL so special characters (@, /,
-    #, etc.) don't break libpq's URL parsing. Greedy match takes the LAST '@' as
-    the host separator, so an '@' inside the password is handled correctly."""
-    m = re.match(r"^(postgres(?:ql)?://[^:/@]+:)(.*)@([^@/]+.*)$", dsn)
-    if not m:
-        return dsn
-    user_part, password, host_part = m.groups()
-    if "%" in password:  # assume already-encoded; leave it alone
-        return dsn
-    return f"{user_part}{quote(password, safe='')}@{host_part}"
+def _pg_params(url: str) -> dict | None:
+    """Parse a postgres URL into connection kwargs by string-splitting (robust to
+    ANY special char in the password). Passing the password as a literal kwarg
+    (not inside a URL) sidesteps all url-encoding issues.
+      last '@'  -> splits userinfo from host   (host has no '@')
+      first ':' -> splits user from password   (postgres user has no ':')"""
+    if "://" not in url:
+        return None
+    scheme, rest = url.split("://", 1)
+    if "postgres" not in scheme or "@" not in rest:
+        return None
+    userinfo, hostpart = rest.rsplit("@", 1)
+    if ":" not in userinfo:
+        return None
+    user, password = userinfo.split(":", 1)
+    hostport, _, dbname = hostpart.partition("/")
+    host, _, port = hostport.partition(":")
+    return {"user": user, "password": password, "host": host,
+            "port": int(port or 5432), "dbname": dbname or "postgres"}
 
 
 class Db:
     def __init__(self, dsn: str | None = None) -> None:
         raw = dsn or CONFIG.database_url
-        self.dsn = _normalize_dsn(raw) if raw else raw
-        if not self.dsn:
+        if not raw:
             raise RuntimeError(
                 "DATABASE_URL not set. Fill .env (Supabase → Settings → Database → "
                 "Connection string), or use --dry-run to skip the DB."
+            )
+        self._params = _pg_params(raw)
+        if self._params is None:
+            raise RuntimeError(
+                "DATABASE_URL is malformed. Expected "
+                "postgresql://postgres:PASSWORD@db.<ref>.supabase.co:5432/postgres "
+                "— check that the '@' before the host is present. Tip: copy the URI "
+                "fresh from Supabase → Settings → Database → Connection string, and "
+                "only replace the password."
             )
         import psycopg  # imported lazily so --dry-run needs no driver
         self._psycopg = psycopg
 
     def _conn(self):
-        return self._psycopg.connect(self.dsn, autocommit=True)
+        return self._psycopg.connect(autocommit=True, **self._params)
 
     def ensure_sport(self, sport_id: str, name: str) -> None:
         with self._conn() as c, c.cursor() as cur:
