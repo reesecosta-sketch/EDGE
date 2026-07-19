@@ -44,8 +44,8 @@ def _print(rows: list[dict]) -> None:
         print(f"  - {r['rationale']}")
 
 
-def run(sport: str, dry_run: bool, write: bool) -> None:
-    events = sample_live_events() if dry_run else fetch_live(sport)
+def run(sport: str, dry_run: bool, write: bool, regions: str = "us") -> None:
+    events = sample_live_events() if dry_run else fetch_live(sport, regions)
     if dry_run:
         events = [e for e in events if e["sport_id"] == sport] or events
     rows = _bets_for(events)
@@ -82,8 +82,10 @@ def main() -> None:
                     help="use sample odds; print; no key/DB needed")
     ap.add_argument("--write", action="store_true",
                     help="write results to Supabase (needs ODDS_API_KEY + DATABASE_URL)")
+    ap.add_argument("--regions", default="us",
+                    help="comma-separated odds regions, e.g. us,us2,eu (more books = more credits)")
     args = ap.parse_args()
-    run(args.sport, args.dry_run, args.write)
+    run(args.sport, args.dry_run, args.write, args.regions)
 
 
 if __name__ == "__main__":

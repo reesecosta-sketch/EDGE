@@ -6,14 +6,30 @@ to the client. Guarded: if psycopg or DATABASE_URL is missing, --dry-run still r
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Iterable
+from urllib.parse import quote
 
 from .config import CONFIG
 
 
+def _normalize_dsn(dsn: str) -> str:
+    """Percent-encode the password in a postgres URL so special characters (@, /,
+    #, etc.) don't break libpq's URL parsing. Greedy match takes the LAST '@' as
+    the host separator, so an '@' inside the password is handled correctly."""
+    m = re.match(r"^(postgres(?:ql)?://[^:/@]+:)(.*)@([^@/]+.*)$", dsn)
+    if not m:
+        return dsn
+    user_part, password, host_part = m.groups()
+    if "%" in password:  # assume already-encoded; leave it alone
+        return dsn
+    return f"{user_part}{quote(password, safe='')}@{host_part}"
+
+
 class Db:
     def __init__(self, dsn: str | None = None) -> None:
-        self.dsn = dsn or CONFIG.database_url
+        raw = dsn or CONFIG.database_url
+        self.dsn = _normalize_dsn(raw) if raw else raw
         if not self.dsn:
             raise RuntimeError(
                 "DATABASE_URL not set. Fill .env (Supabase → Settings → Database → "
