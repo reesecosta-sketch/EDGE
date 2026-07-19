@@ -187,7 +187,7 @@ function BetDetail({ bet, onClose, isTracked, onToggle }: {
 /* ---------------- main dashboard ---------------- */
 
 export default function Dashboard() {
-  const [filters, setFilters] = useState<Filters>({ sport: null, market: null, minEv: 0.05 });
+  const [filters, setFilters] = useState<Filters>({ sport: null, market: null, minEv: 0.01 });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [detail, setDetail] = useState<EvBet | null>(null);
   const { data = [], isLoading, error } = useEvBets(filters);

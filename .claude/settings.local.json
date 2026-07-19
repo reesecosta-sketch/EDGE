@@ -20,7 +20,15 @@
       "WebFetch(domain:edgesportsbetting.netlify.app)",
       "Bash(git rm *)",
       "Bash(git add *)",
-      "Bash(python -m worker.live --sport mlb --dry-run)"
+      "Bash(python -m worker.live --sport mlb --dry-run)",
+      "Bash(git check-ignore *)",
+      "Bash(python -m pip install -q \"httpx>=0.27\" \"psycopg[binary]>=3.1\")",
+      "Bash(python -c \"from worker.db import _normalize_dsn; print\\('dsn helper ok:', _normalize_dsn\\('postgresql://postgres:ab@cd@db.x.supabase.co:5432/postgres'\\).split\\('@db.'\\)[0].endswith\\('%40cd'\\)\\)\")",
+      "Bash(python -m worker.live --sport mlb --write)",
+      "Bash(python -m worker.live --sport mlb --regions us,us2,eu)",
+      "Bash(MIN_EV=0.0 python -m worker.live --sport mlb --regions us,us2,eu)",
+      "Bash(MIN_EV=0.01 python -m worker.live --sport mlb --regions us,us2,eu --write)",
+      "Bash(python -c ' *)"
     ]
   }
 }

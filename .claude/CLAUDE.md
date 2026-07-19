@@ -43,6 +43,9 @@
 - **Agents instantiated** — all 11 from `research/agents.md` now exist as `.claude/agents/*.md`. (May require a Claude Code restart to be invocable by name, since `.claude/agents/` was created mid-session.)
 - **`0002_multitenancy.sql` written** — org/membership/tenant tables + `is_org_member()` + RLS + auto-personal-org trigger + `ev_bets.trust_tier`. **Written, not yet applied** (needs the dev Supabase project).
 
+### Live +EV pipeline (model-free line-shopping) — built & tested
+- `worker/live.py` + `worker/core/positive_ev.py` + `worker/ingest/odds_api.py:fetch_live`: pull live odds (The Odds API) → de-vig each book → cross-book no-vig **consensus** fair line → flag any book price beating it → write to Supabase (`--write`). 14 tests green; verified via `python -m worker.live --sport mlb --dry-run`. Needs `ODDS_API_KEY` + `DATABASE_URL` (both in git-ignored `.env`) to run live. `0003_live_ev.sql` makes `ev_bets.prediction_id` nullable + registers mlb/soccer/tennis. This is honest +EV (soft-book mispricing vs. market), NOT a predictive model — the model/CLV gate is still the separate big project.
+
 ### In progress / not yet real (stubs raise clear errors)
 - `worker/models/golf.py` → `_load_training_frame()` needs the real golf feature pipeline; `_explain()` is a placeholder, not real SHAP yet.
 - `worker/ingest/odds_api.py` → `fetch_odds()` (live pull + snapshot caching) not implemented; `sample_market()` is real.
